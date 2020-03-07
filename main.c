@@ -56,9 +56,6 @@ int main (void)
     DDRB |= _BV(PB7);
     PORTB |= _BV(PB7);
 
-    // Buzz Init, Ouput Low
-    DDRC |= _BV(PC6);
-    PORTC &= ~_BV(PC6);
 
     // PCINT0 Init
     DDRB &= ~_BV(PB0);
@@ -73,6 +70,20 @@ int main (void)
     EICRB |= _BV(ISC51);
     EICRB &= ~_BV(ISC50);
     EIMSK |= _BV(INT5);
+
+
+
+    // Buzz Init, Ouput Low
+    DDRC |= _BV(PC6);
+    PORTC &= ~_BV(PC6);
+
+    ICR1 = 0x6800;
+    OCR1A = ICR1 >>1;
+
+    TCCR1A |= _BV(WGM11);
+    TCCR1B |= _BV(WGM12)| _BV(WGM13);
+    // TCCR1A |=  _BV(COM1A1);
+    TCCR1B |= (1 << CS10);
 
     sei();
 
@@ -136,8 +147,9 @@ void key_disable(void){
 
 void trigger_dot(void){
     key_status = KS_DOT;
-    PORTC |= _BV(PC6);
+    TCCR1A |= _BV(COM1A1);
     _delay_ms(UnitTime);
+    TCCR1A &= ~_BV(COM1A1);
     PORTC &= ~_BV(PC6);
     _delay_ms(UnitTime);
     key_status = KS_TIMER;
@@ -146,9 +158,9 @@ void trigger_dot(void){
 
 void trigger_dash(void){
     key_status = KS_DASH;
-    PORTC |= _BV(PC6);
+    TCCR1A |= _BV(COM1A1);
     _delay_ms(UnitTime * 3);
-    PORTC &= ~_BV(PC6);
+    TCCR1A &= ~_BV(COM1A1);
     _delay_ms(UnitTime);
     key_status = KS_TIMER;
 }
