@@ -26,3 +26,6 @@
 + 使用 USB 口 简单的解码，实现通过USB串口发送解码内容到电脑终端
 + 实现 HID 版本协议。控制 WPM 速度和声音频率
 + 编写 HID 版本的电脑端桌面应用 (可 YY)
+
+# 原理图
+[AVRUSBMorse.pdf](/schematic/AVRUSBMorse.pdf)
