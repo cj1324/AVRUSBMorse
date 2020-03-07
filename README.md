@@ -29,3 +29,7 @@
 
 # 原理图
 [AVRUSBMorse.pdf](/schematic/AVRUSBMorse.pdf)
+
+# 成品照片
+
+![PCB](/PCB.jpg)
