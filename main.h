@@ -24,6 +24,7 @@
 #define UnitTime 1200/WPM
 #define LOOP_TIMEOUT 2 * 1200/WPM
 
+void init_buzz_pwm(void);
 void key_enable(void);
 void key_disable(void);
 void trigger_dot(void);

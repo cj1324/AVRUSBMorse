@@ -71,19 +71,7 @@ int main (void)
     EICRB &= ~_BV(ISC50);
     EIMSK |= _BV(INT5);
 
-
-
-    // Buzz Init, Ouput Low
-    DDRC |= _BV(PC6);
-    PORTC &= ~_BV(PC6);
-
-    ICR1 = 0x6800;
-    OCR1A = ICR1 >>1;
-
-    TCCR1A |= _BV(WGM11);
-    TCCR1B |= _BV(WGM12)| _BV(WGM13);
-    // TCCR1A |=  _BV(COM1A1);
-    TCCR1B |= (1 << CS10);
+    init_buzz_pwm();
 
     sei();
 
@@ -97,6 +85,21 @@ int main (void)
         }
     }
 }
+
+
+void init_buzz_pwm(void){
+    // Buzz Init, PWM Ouput
+    DDRC |= _BV(PC6);
+    PORTC &= ~_BV(PC6);
+
+    ICR1 = 0x6800; // 600Hz
+    OCR1A = ICR1 >>1; // 50%
+
+    TCCR1A |= _BV(WGM11);
+    TCCR1B |= _BV(WGM12)| _BV(WGM13);
+    TCCR1B |= (1 << CS10);
+}
+
 
 uint8_t key_timer_exec(void){
     loop_out_inc +=1;
