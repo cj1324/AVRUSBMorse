@@ -25,6 +25,7 @@
 #include <util/delay.h>
 
 #include "main.h"
+#include "cwdecode.h"
 
 enum KeyStatus{
     KS_INIT=0,
@@ -71,7 +72,10 @@ int main (void)
     EICRB &= ~_BV(ISC50);
     EIMSK |= _BV(INT5);
 
-    init_buzz_pwm();
+    init_buzz();
+
+    //decode_timer_init();
+
 
     sei();
 
@@ -87,19 +91,36 @@ int main (void)
 }
 
 
-void init_buzz_pwm(void){
-    // Buzz Init, PWM Ouput
+void init_buzz(void){
     DDRC |= _BV(PC6);
     PORTC &= ~_BV(PC6);
-
+#ifdef USE_PWM_BUZZ
+    // Buzz Init, PWM Ouput
     ICR1 = 0x6800; // 600Hz
     OCR1A = ICR1 >>1; // 50%
 
     TCCR1A |= _BV(WGM11);
     TCCR1B |= _BV(WGM12)| _BV(WGM13);
     TCCR1B |= (1 << CS10);
+#endif
 }
 
+
+void on_buzz(void){
+#ifdef USE_PWM_BUZZ
+    TCCR1A |= _BV(COM1A1);
+#else
+    PORTC |= _BV(PC6);
+#endif
+}
+
+void off_buzz(void){
+#ifdef USE_PWM_BUZZ
+    TCCR1A &= ~_BV(COM1A1);
+#else
+    PORTC &= ~_BV(PC6);
+#endif
+}
 
 uint8_t key_timer_exec(void){
     loop_out_inc +=1;
@@ -150,10 +171,11 @@ void key_disable(void){
 
 void trigger_dot(void){
     key_status = KS_DOT;
-    TCCR1A |= _BV(COM1A1);
+
+    on_buzz();
     _delay_ms(UnitTime);
-    TCCR1A &= ~_BV(COM1A1);
-    PORTC &= ~_BV(PC6);
+    off_buzz();
+
     _delay_ms(UnitTime);
     key_status = KS_TIMER;
 }
@@ -161,9 +183,11 @@ void trigger_dot(void){
 
 void trigger_dash(void){
     key_status = KS_DASH;
-    TCCR1A |= _BV(COM1A1);
+
+    on_buzz();
     _delay_ms(UnitTime * 3);
-    TCCR1A &= ~_BV(COM1A1);
+    off_buzz();
+
     _delay_ms(UnitTime);
     key_status = KS_TIMER;
 }
