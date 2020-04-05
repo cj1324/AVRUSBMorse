@@ -32,11 +32,14 @@ enum KeyStatus{
     KS_READY,
     KS_DOT,
     KS_DASH,
+    KS_BLANK,
     KS_TIMER
 };
 
 volatile uint8_t key_status = KS_INIT;
-volatile uint8_t loop_out_inc = 0;
+uint16_t loop_out_inc = 0;
+uint16_t play_time = 0;
+uint16_t blank_time = 0;
 
 
 int main (void)
@@ -74,20 +77,16 @@ int main (void)
 
     init_buzz();
 
-    //decode_timer_init();
+    decode_timer_init();
 
 
     sei();
 
-    for (;;){
-        _delay_ms(1);
-        if (key_status == KS_TIMER){
-            key_timer_exec();
-        }
-        else if (key_status == KS_INIT){
-            key_enable();
-        }
+    if (key_status == KS_INIT){
+        key_enable();
     }
+
+    for (;;){}
 }
 
 
@@ -123,33 +122,53 @@ void off_buzz(void){
 }
 
 uint8_t key_timer_exec(void){
-    loop_out_inc +=1;
-    if (loop_out_inc >= LOOP_TIMEOUT){
-        loop_out_inc =0;
-        key_enable();
-        return 0;
-    }
-    uint8_t in_dot = (PIND & _BV(PD5)) == 0 ? 1 : 0;
-    uint8_t in_dash  = (PIND & _BV(PD4)) == 0 ? 1 : 0;
-    if (in_dot + in_dash  == 2){
-        return 0;
-    }
-
     loop_out_inc += 1;
-    _delay_ms(1);
-
-    uint8_t in_dot_2 = (PIND & _BV(PD5)) == 0 ? 1 : 0;
-    uint8_t in_dash_2  = (PIND & _BV(PD4)) == 0 ? 1 : 0;
-    if (in_dot == 1 && in_dot_2 == 1){
-        loop_out_inc =0;
-        trigger_dot();
-        return 1;
+    if (key_status == KS_DOT || key_status == KS_DASH){
+        if (loop_out_inc <= play_time){
+            on_buzz();
+            return 0;
+        } else {
+            loop_out_inc = 0;
+            off_buzz();
+            key_status = KS_BLANK;
+            return 0;
+        }
     }
+    else if (key_status == KS_BLANK){
+        if (loop_out_inc <= blank_time){
+            return 0;
+        }else {
+            key_status = KS_TIMER;
+            return 0;
+        }
+    } else if (key_status == KS_TIMER) {
+        if (loop_out_inc >= LOOP_TIMEOUT){
+            loop_out_inc =0;
+            key_enable();
+            return 0;
+        }
 
-    if (in_dash == 1 && in_dash_2 == 1){
-        loop_out_inc =0;
-        trigger_dash();
-        return 1;
+        uint8_t in_dot = (PIND & _BV(PD5)) == 0 ? 1 : 0;
+        uint8_t in_dash  = (PIND & _BV(PD4)) == 0 ? 1 : 0;
+
+        if (in_dot + in_dash  == 2){
+            return 0;
+        }
+        _delay_us(20);
+        uint8_t in_dot_2 = (PIND & _BV(PD5)) == 0 ? 1 : 0;
+        uint8_t in_dash_2  = (PIND & _BV(PD4)) == 0 ? 1 : 0;
+
+        if (in_dot == 1 && in_dot_2 == 1){
+            loop_out_inc =0;
+            trigger_dot();
+            return 1;
+        }
+
+        if (in_dash == 1 && in_dash_2 == 1){
+            loop_out_inc =0;
+            trigger_dash();
+            return 1;
+        }
     }
     return 0;
 }
@@ -171,25 +190,15 @@ void key_disable(void){
 
 void trigger_dot(void){
     key_status = KS_DOT;
-
-    on_buzz();
-    _delay_ms(UnitTime);
-    off_buzz();
-
-    _delay_ms(UnitTime);
-    key_status = KS_TIMER;
+    play_time = UnitTime;
+    blank_time = UnitTime;
 }
 
 
 void trigger_dash(void){
     key_status = KS_DASH;
-
-    on_buzz();
-    _delay_ms(UnitTime * 3);
-    off_buzz();
-
-    _delay_ms(UnitTime);
-    key_status = KS_TIMER;
+    play_time = UnitTime * 3;
+    blank_time = UnitTime;
 }
 
 
@@ -205,7 +214,7 @@ ISR(PCINT1_vect)
 {
 
     key_disable();
-    _delay_ms(1);
+    _delay_us(20);
     if ((PIND & _BV(PD5)) == 0)
     {
         trigger_dot();
@@ -219,7 +228,7 @@ ISR(PCINT1_vect)
 ISR(INT5_vect)
 {
     key_disable();
-    _delay_ms(1);
+    _delay_us(20);
     if ((PIND & _BV(PD4)) == 0)
     {
         trigger_dash();
@@ -228,4 +237,10 @@ ISR(INT5_vect)
     {
         key_enable();
     }
+}
+
+ISR(TIMER0_COMPA_vect)
+{
+    key_timer_exec();
+    decode_timer_exec();
 }

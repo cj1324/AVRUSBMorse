@@ -22,7 +22,7 @@
 
 #define WPM      20
 #define UnitTime 1200/WPM
-#define LOOP_TIMEOUT 2 * 1200/WPM
+#define LOOP_TIMEOUT 4 * 1200/WPM
 
 // #define USE_PWM_BUZZ
 
