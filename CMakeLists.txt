@@ -18,18 +18,53 @@ SET(CPU "16000000UL")
 SET(CMAKE_C_FLAGS_DEBUG "-O0 -g -ggdb")
 SET(CMAKE_C_FLAGS_RELEASE "-O2 -g")
 
-SET(MCU_FLAGS " -Wall -mmcu=${MCU} ")
+SET(MCU_FLAGS " -Wall -mmcu=${MCU}  -ffreestanding -fno-builtin -ffunction-sections -fdata-sections ")
 SET(CMAKE_C_FLAGS "${MCU_FLAGS}")
 SET(CMAKE_EXE_LINKER_FLAGS "-Wl,-Map,${PROJECT_NAME}.map")
 SET(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS "")
 
 ADD_DEFINITIONS(-DF_CPU=${CPU})
-SET(SRC main.c cwdecode.c)
 
+
+# LUFA USB Driver
+SET(LUFA_DIR ${CMAKE_SOURCE_DIR}/../lufa/LUFA/)
+SET(LUFA_USB_DRV ${LUFA_DIR}Drivers/USB/)
+SET(ARCH AVR8)
+STRING(APPEND CMAKE_C_FLAGS " -DARCH=ARCH_${ARCH} ")
+STRING(APPEND CMAKE_C_FLAGS " -DF_USB=${CPU} ")
+STRING(APPEND CMAKE_C_FLAGS " -DUSB_DEVICE_ONLY=1 ")
+STRING(APPEND CMAKE_C_FLAGS " -DUSE_LUFA_CONFIG_HEADER -I${CMAKE_SOURCE_DIR}/Config/")
+
+SET(LUFA_USB_SRC
+    # Common
+    ${LUFA_USB_DRV}Core/${ARCH}/USBController_${ARCH}.c
+    ${LUFA_USB_DRV}Core/${ARCH}/USBInterrupt_${ARCH}.c
+    ${LUFA_USB_DRV}Core/ConfigDescriptors.c
+    ${LUFA_USB_DRV}Core/Events.c
+    ${LUFA_USB_DRV}Core/USBTask.c
+
+    # Device
+    ${LUFA_USB_DRV}Core/DeviceStandardReq.c
+    ${LUFA_USB_DRV}Core/${ARCH}/Device_${ARCH}.c
+    ${LUFA_USB_DRV}Core/${ARCH}/Endpoint_${ARCH}.c
+    ${LUFA_USB_DRV}Core/${ARCH}/EndpointStream_${ARCH}.c
+
+    # HID Class
+    ${LUFA_USB_DRV}Class/Device/HIDClassDevice.c)
+
+INCLUDE_DIRECTORIES(${LUFA_USB_DRV})
+INCLUDE_DIRECTORIES(${LUFA_DIR}/Platform/)
+
+
+SET(SRC main.c cwdecode.c Descriptors.c ${LUFA_USB_SRC})
 ADD_EXECUTABLE(${PROJECT_NAME}.elf ${SRC})
 
 
-ADD_CUSTOM_COMMAND(DEPENDS ${PROJECT_NAME}.elf OUTPUT ${PROJECT_NAME}.hex COMMAND ${CMAKE_OBJCOPY} -Oihex ${PROJECT_NAME}.elf ${PROJECT_NAME}.hex)
+ADD_CUSTOM_COMMAND(DEPENDS ${PROJECT_NAME}.elf OUTPUT ${PROJECT_NAME}.hex
+    COMMAND ${CMAKE_OBJCOPY} -Oihex ${PROJECT_NAME}.elf ${PROJECT_NAME}.hex)
+ADD_CUSTOM_COMMAND(TARGET ${PROJECT_NAME}.elf POST_BUILD COMMAND ${CMAKE_SIZE}
+    -d -C ${PROJECT_NAME}.elf)
+
 ADD_CUSTOM_TARGET(erase ${DFU_BIN} ${MCU} erase)
-ADD_CUSTOM_TARGET(launch ${DFU_BIN} ${MCU} launch --no-reset)
+ADD_CUSTOM_TARGET(launch ${DFU_BIN} ${MCU} launch)
 ADD_CUSTOM_TARGET(flash ${DFU_BIN} ${MCU} flash --force ${PROJECT_NAME}.hex DEPENDS ${PROJECT_NAME}.hex)
