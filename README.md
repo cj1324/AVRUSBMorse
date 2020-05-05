@@ -21,11 +21,13 @@
 + 通过耳机口链接自动键，触发蜂鸣器发出长短音。
 + 通过 PWM 驱动蜂鸣器 默认 600Hz 50% (效果不佳)
 + 实现 USE HID 版本协议。推送按键状态 (使用 LUFA usb stack, cmake version.)
++ 使用 CW 自解码，实现通过USB HID发送解码内容到电脑终端
 
 # TODO
 
-+ 使用 USB 口 简单的解码，实现通过USB串口发送解码内容到电脑终端
-+ 编写 HID 版本的电脑端桌面应用 (可 YY)
++ 编写 HID 版本的电脑端桌面应用
++ 暂无
+
 
 # 原理图
 [AVRUSBMorse.pdf](/schematic/AVRUSBMorse.pdf)
