@@ -42,6 +42,7 @@ volatile uint8_t key_status = KS_INIT;
 uint16_t loop_out_inc = 0;
 uint16_t play_time = 0;
 uint16_t blank_time = 0;
+uint8_t decode_value = 0;
 
 static uint8_t PrevHIDReportBuffer[GENERIC_REPORT_SIZE];
 
@@ -256,6 +257,7 @@ bool CALLBACK_HID_Device_CreateHIDReport(USB_ClassInfo_HID_Device_t* const HIDIn
     *ReportSize = GENERIC_REPORT_SIZE;
     Data[1] = key_status;
     Data[3] = UnitTime;
+    Data[5] = decode_value;
     return false;
 }
 
@@ -345,5 +347,5 @@ ISR(INT5_vect)
 ISR(TIMER0_COMPA_vect)
 {
     key_timer_exec();
-    decode_timer_exec();
+    decode_value = decode_timer_exec(key_status);
 }

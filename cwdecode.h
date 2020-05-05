@@ -19,5 +19,10 @@
 #ifndef _CWDECODE_H_
 #define _CWDECODE_H_
 void decode_timer_init(void);
-void decode_timer_exec(void);
+uint8_t decode_timer_exec(uint8_t code);
+
+void decode_clean(void);
+void decode_update(uint8_t code);
+uint8_t decode_result(void);
+
 #endif
