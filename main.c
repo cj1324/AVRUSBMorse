@@ -24,6 +24,8 @@
 
 #include <util/delay.h>
 
+#include "GenericHID.h"
+
 #include "main.h"
 #include "cwdecode.h"
 
@@ -40,6 +42,24 @@ volatile uint8_t key_status = KS_INIT;
 uint16_t loop_out_inc = 0;
 uint16_t play_time = 0;
 uint16_t blank_time = 0;
+
+static uint8_t PrevHIDReportBuffer[GENERIC_REPORT_SIZE];
+
+USB_ClassInfo_HID_Device_t Generic_HID_Interface =
+    {
+        .Config =
+            {
+                .InterfaceNumber              = INTERFACE_ID_GenericHID,
+                .ReportINEndpoint             =
+                    {
+                        .Address              = GENERIC_IN_EPADDR,
+                        .Size                 = GENERIC_EPSIZE,
+                        .Banks                = 1,
+                    },
+                .PrevReportINBuffer           = PrevHIDReportBuffer,
+                .PrevReportINBufferSize       = sizeof(PrevHIDReportBuffer),
+            },
+    };
 
 
 int main (void)
@@ -77,6 +97,8 @@ int main (void)
 
     init_buzz();
 
+    SetupHardware();
+
     decode_timer_init();
 
 
@@ -86,9 +108,29 @@ int main (void)
         key_enable();
     }
 
-    for (;;){}
+
+    GlobalInterruptEnable();
+
+    for (;;)
+    {
+        HID_Device_USBTask(&Generic_HID_Interface);
+        USB_USBTask();
+    }
+
 }
 
+void SetupHardware(void)
+{
+    /* Disable watchdog if enabled by bootloader/fuses */
+    MCUSR &= ~(1 << WDRF);
+    wdt_disable();
+
+    /* Disable clock division */
+    clock_prescale_set(clock_div_1);
+
+    /* Hardware Initialization */
+    USB_Init();
+}
 
 void init_buzz(void){
     DDRC |= _BV(PC6);
@@ -189,16 +231,77 @@ void key_disable(void){
 
 
 void trigger_dot(void){
-    key_status = KS_DOT;
+
+    loop_out_inc = 0;
     play_time = UnitTime;
     blank_time = UnitTime;
+    key_status = KS_DOT;
 }
 
 
 void trigger_dash(void){
-    key_status = KS_DASH;
+    loop_out_inc = 0;
     play_time = UnitTime * 3;
     blank_time = UnitTime;
+    key_status = KS_DASH;
+}
+
+bool CALLBACK_HID_Device_CreateHIDReport(USB_ClassInfo_HID_Device_t* const HIDInterfaceInfo,
+                                         uint8_t* const ReportID,
+                                         const uint8_t ReportType,
+                                         void* ReportData,
+                                         uint16_t* const ReportSize)
+{
+    uint8_t* Data        = (uint8_t*)ReportData;
+    *ReportSize = GENERIC_REPORT_SIZE;
+    Data[1] = key_status;
+    Data[3] = UnitTime;
+    return false;
+}
+
+void CALLBACK_HID_Device_ProcessHIDReport(USB_ClassInfo_HID_Device_t* const HIDInterfaceInfo,
+                                          const uint8_t ReportID,
+                                          const uint8_t ReportType,
+                                          const void* ReportData,
+                                          const uint16_t ReportSize)
+{
+    uint8_t* Data       = (uint8_t*)ReportData;
+    // TODO.
+}
+
+/** Event handler for the library USB Connection event. */
+void EVENT_USB_Device_Connect(void)
+{
+    // USE LED.
+}
+
+/** Event handler for the library USB Disconnection event. */
+void EVENT_USB_Device_Disconnect(void)
+{
+    // USE LED.
+}
+
+/** Event handler for the library USB Configuration Changed event. */
+void EVENT_USB_Device_ConfigurationChanged(void)
+{
+    bool ConfigSuccess = true;
+
+    ConfigSuccess &= HID_Device_ConfigureEndpoints(&Generic_HID_Interface);
+
+    USB_Device_EnableSOFEvents();
+
+}
+
+/** Event handler for the library USB Control Request reception event. */
+void EVENT_USB_Device_ControlRequest(void)
+{
+    HID_Device_ProcessControlRequest(&Generic_HID_Interface);
+}
+
+/** Event handler for the USB device Start Of Frame event. */
+void EVENT_USB_Device_StartOfFrame(void)
+{
+    HID_Device_MillisecondElapsed(&Generic_HID_Interface);
 }
 
 
